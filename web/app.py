@@ -10,7 +10,7 @@ load_dotenv()
 
 # Inicializar la aplicación Flask
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "clave-secreta-para-sesiones")
+app.secret_key = os.getenv("SECRET_KEY", "192b9bdd22ab9ed4d12e236c78afcb9a393ec15f71bbf5dc987d54727823bcbf")
 
 # Inicializar agentes
 akinator = MundialesAkinator(api_url=os.getenv("API_BASE_URL", "http://localhost:3000/api"))
