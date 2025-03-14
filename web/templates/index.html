@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agente de Mundiales de Fútbol</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+         body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #e94560);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            color: white;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .chat-box {
+            height: 60vh;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            max-width: 80%;
+            color: white;
+        }
+
+        .user-message {
+            background-color: rgba(233, 69, 96, 0.8);
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .agent-message {
+            background-color: rgba(15, 52, 96, 0.8);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .title-container h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.6), 0 0 20px rgba(255, 0, 255, 0.6);
+            color: #ff1493; /* Rosa neon */
+        }
+
+        .title-container {
+            text-align: center;
+            padding: 20px 0;
+            background-color: rgba(0, 86, 179, 0.8);
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .menu-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .menu-buttons a {
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            border: none;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            border: none;
+            color: black;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="title-container">
+        <h1>Agente Campeones Mundiales de Fútbol</h1>
+        <p class="lead">Pregunta sobre equipos campeones del mundo, jugadores y más</p>
+    </div>
+
+    <div class="menu-buttons">
+        <a href="akinator" class="btn btn-success">Jugar Adivinador</a>
+        <a href="entrenar" class="btn btn-warning">Entrenamiento Agente</a>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-box" id="chatBox">
+            <div class="message agent-message">
+                ¡Hola! Soy el Agente de Mundiales. Puedes preguntarme sobre los equipos campeones del mundo, jugadores y más. Por ejemplo:
+                <ul>
+                    <li>¿Quién ganó el Mundial de 2014?</li>
+                    <li>¿En qué años ganó Italia el mundial?</li>
+                    <li>¿Quiénes fueron los jugadores de Alemania en 2014?</li>
+                    <li>¿Cuántos mundiales ha ganado Brasil?</li>
+                    <li>¿Quiénes eran los titulares del equipo campeón en 2014?</li>
+                    <li>¿Que equipo ganó el mundial de 2010?</li>
+                    <li>¿Quiénes fueron los jugadores de Alemania en 2014?</li>
+                    <li>¿Que jugadores participaron en el mundial 2018?</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="userInput" class="form-control" placeholder="Escribe tu pregunta aquí...">
+            <button class="btn btn-primary" id="sendButton">Enviar</button>
+        </div>
+
+        <div class="loading d-none" id="loadingIndicator">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p>Procesando tu consulta...</p>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Basado en datos de equipos campeones del mundo de fútbol</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatBox = document.getElementById('chatBox');
+            const userInput = document.getElementById('userInput');
+            const sendButton = document.getElementById('sendButton');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+
+            // Función para agregar un mensaje al chat
+            function addMessage(message, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'agent-message'}`;
+                messageDiv.textContent = message;
+                chatBox.appendChild(messageDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            // Función para enviar la consulta al servidor
+            async function sendQuery(query) {
+                try {
+                    loadingIndicator.classList.remove('d-none');
+                    
+                    const response = await fetch('/api/consulta', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ consulta: query })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    loadingIndicator.classList.add('d-none');
+                    
+                    if (response.ok) {
+                        addMessage(data.respuesta);
+                    } else {
+                        addMessage(`Error: ${data.error || 'No se pudo procesar tu consulta'}`);
+                    }
+                } catch (error) {
+                    loadingIndicator.classList.add('d-none');
+                    addMessage('Error de conexión. Por favor, inténtalo de nuevo más tarde.');
+                    console.error('Error:', error);
+                }
+            }
+
+            // Evento para el botón de enviar
+            sendButton.addEventListener('click', () => {
+                const query = userInput.value.trim();
+                if (query) {
+                    addMessage(query, true);
+                    userInput.value = '';
+                    sendQuery(query);
+                }
+            });
+
+            // Evento para la tecla Enter
+            userInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    const query = userInput.value.trim();
+                    if (query) {
+                        addMessage(query, true);
+                        userInput.value = '';
+                        sendQuery(query);
+                    }
+                }
+            });
+
+            // Enfocar el input al cargar la página
+            userInput.focus();
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

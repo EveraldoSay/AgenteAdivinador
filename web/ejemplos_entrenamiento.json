@@ -1,0 +1,162 @@
+[
+  {
+    "texto": "¿Quién ganó el mundial de 1970?",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "¿Qué país fue campeón en 1990?",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "¿Quién ganó la copa del mundo en 2010?",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "Campeón del mundial 1966",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "¿Qué equipo ganó en 1982?",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "Ganador de la Copa Mundial 2014",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "Mundial 2006 campeón",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "¿Quién levantó la copa en 1998?",
+    "intencion": "buscar_mundial_por_anio"
+  },
+  {
+    "texto": "¿Cuántos mundiales ha ganado Brasil?",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "Mundiales ganados por Alemania",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "Títulos mundiales de Argentina",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "¿En qué años fue campeón Italia?",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "¿Cuántas copas del mundo tiene Francia?",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "¿España ha ganado algún mundial?",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "Historial de títulos de Inglaterra",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "¿Cuándo fue campeón Brasil por última vez?",
+    "intencion": "buscar_mundiales_por_pais"
+  },
+  {
+    "texto": "¿Pelé jugó en el mundial de 1958?",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "¿Maradona fue campeón en qué año?",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "¿En qué posición jugaba Ronaldo en 2002?",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "¿Messi jugó la final de 2022?",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "¿Beckenbauer fue parte del equipo de 1974?",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "¿Fue Zidane titular en 1998?",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "Información sobre Iniesta en 2010",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "¿En qué mundiales jugó Buffon?",
+    "intencion": "buscar_jugador"
+  },
+  {
+    "texto": "¿Quiénes fueron los jugadores de Alemania en 2014?",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "Alineación de Brasil 1970",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "Plantilla de España 2010",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "Equipo de Argentina 2022",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "¿Cuál fue el 11 titular de Italia en 2006?",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "Jugadores de Francia 2018",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "Muéstrame la plantilla de Brasil 1994",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "Formación de Alemania 1954",
+    "intencion": "consultar_equipo_completo"
+  },
+  {
+    "texto": "Háblame de los mundiales de fútbol",
+    "intencion": "consulta_general"
+  },
+  {
+    "texto": "¿Cuántos mundiales hay en la base de datos?",
+    "intencion": "consulta_general"
+  },
+  {
+    "texto": "¿Qué países han ganado más mundiales?",
+    "intencion": "consulta_general"
+  },
+  {
+    "texto": "Información sobre campeones del mundo",
+    "intencion": "consulta_general"
+  },
+  {
+    "texto": "¿Qué puedo preguntarte sobre los mundiales?",
+    "intencion": "consulta_general"
+  },
+  {
+    "texto": "Datos curiosos de las copas del mundo",
+    "intencion": "consulta_general"
+  },
+  {
+    "texto": "¿Cuál es el país más ganador?",
+    "intencion": "consulta_general"
+  },
+  {
+    "texto": "Resumen de mundiales",
+    "intencion": "consulta_general"
+  }
+]

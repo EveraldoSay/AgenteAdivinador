@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akinator de Mundiales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(45deg, #6a11cb, #2575fc, #ff8c00); /* Fondo en degradado */
+            background-size: 400% 400%;
+            animation: gradient-animation 6s ease infinite;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .title-container h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.6), 0 0 20px rgba(255, 0, 255, 0.6);
+            color: #ff1493; /* Rosa neon */
+        }
+
+        .title-container p {
+            font-size: 1.5rem;
+            margin-top: 10px;
+            color: #7a4bdb; /* Morado neon */
+        }
+
+        #akinator-image {
+            display: block;
+            margin: 30px auto;
+            width: 200px;
+            filter: drop-shadow(0px 0px 20px rgba(255, 0, 255, 0.8));
+        }
+
+        .mode-selection, .question-box, .result-box {
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+        }
+
+        .btn-group .btn {
+            font-size: 1.2rem;
+            padding: 12px;
+            border-radius: 8px;
+            transition: 0.3s ease;
+            color: #fff;
+        }
+
+        .btn-primary {
+            background-color: #6a11cb; /* Morado neon */
+            border-color: #6a11cb;
+        }
+
+        .btn-success {
+            background-color: #2575fc; /* Azul neon */
+            border-color: #2575fc;
+        }
+
+        .btn-danger {
+            background-color: #ff1493; /* Rosa neon */
+            border-color: #ff1493;
+        }
+
+        .btn-secondary {
+            background-color: #8e8e8e;
+            border-color: #8e8e8e;
+        }
+
+        .btn-primary:hover {
+            background-color: #7a4bdb;
+            border-color: #7a4bdb;
+        }
+
+        .btn-success:hover {
+            background-color: #6cba5e;
+            border-color: #6cba5e;
+        }
+
+        .btn-danger:hover {
+            background-color: #db4b4b;
+            border-color: #db4b4b;
+        }
+
+        .btn-secondary:hover {
+            background-color: #8e8e8e;
+            border-color: #8e8e8e;
+        }
+
+        #play-again {
+            background-color: #ff1493;
+            border-color: #ff1493;
+            font-size: 1.5rem;
+        }
+
+        .back-to-chat {
+            margin-top: 30px;
+            display: block;
+            text-align: center;
+            font-size: 1.2rem;
+            color: #ff1493;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-to-chat:hover {
+            text-decoration: underline;
+        }
+
+        .d-none {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title-container">
+            <h1>Adivinador de Mundiales</h1>
+            <p>¡Piensa en un equipo o jugador y lo adivinaré!</p>
+            <img id="akinator-image" src="../../static/public/images/adivino.png" alt="Adivino">
+        </div>
+
+        <div id="mode-selection" class="mode-selection">
+            <h3>¿Qué quieres que adivine?</h3>
+            <div class="btn-group w-100">
+                <button class="btn btn-primary btn-lg" id="mode-equipo">Equipo Campeón</button>
+                <!-- <button class="btn btn-success btn-lg" id="mode-jugador">Jugador Campeón</button> -->
+            </div>
+        </div>
+
+        <div id="question-container" class="question-box d-none">
+            <h3 id="question-text">Pregunta aquí...</h3>
+            <div class="btn-group w-100">
+                <button class="btn btn-primary" id="resp-si">Sí</button>
+                <button class="btn btn-danger" id="resp-no">No</button>
+                <button class="btn btn-secondary" id="resp-nose">No sé</button>
+            </div>
+        </div>
+
+        <div id="result-container" class="result-box d-none">
+            <h3 id="result-text">Resultado aquí...</h3>
+            <div class="btn-group w-100">
+                <button class="btn btn-primary" id="play-again">Jugar de nuevo</button>
+            </div>
+        </div>
+
+        <a href="/" class="btn btn-light back-to-chat">Volver al Chat adivinador</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modeSelection = document.getElementById('mode-selection');
+            const modeEquipo = document.getElementById('mode-equipo');
+            const modeJugador = document.getElementById('mode-jugador');
+            
+            const questionContainer = document.getElementById('question-container');
+            const questionText = document.getElementById('question-text');
+            
+            const resultContainer = document.getElementById('result-container');
+            const resultText = document.getElementById('result-text');
+            
+            const respSi = document.getElementById('resp-si');
+            const respNo = document.getElementById('resp-no');
+            const respNose = document.getElementById('resp-nose');
+            const playAgain = document.getElementById('play-again');
+
+            // Iniciar juego según el modo
+            function startGame(mode) {
+                fetch('/api/iniciar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ modo: mode })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    modeSelection.classList.add('d-none');
+                    questionText.textContent = data.pregunta;
+                    questionContainer.classList.remove('d-none');
+                })
+                .catch(error => console.error('Error:', error));
+            }
+
+            // Procesar respuesta
+            function processResponse(response) {
+                fetch('/api/responder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ respuesta: response })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.es_final) {
+                        questionContainer.classList.add('d-none');
+                        resultText.textContent = data.resultado;
+                        resultContainer.classList.remove('d-none');
+                    } else {
+                        questionText.textContent = data.resultado;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+
+            // Event listeners
+            modeEquipo.addEventListener('click', () => startGame('equipo'));
+            modeJugador.addEventListener('click', () => startGame('jugador'));
+            
+            respSi.addEventListener('click', () => processResponse('sí'));
+            respNo.addEventListener('click', () => processResponse('no'));
+            respNose.addEventListener('click', () => processResponse('no sé'));
+            
+            playAgain.addEventListener('click', () => {
+                resultContainer.classList.add('d-none');
+                modeSelection.classList.remove('d-none');
+            });
+        });
+    </script>
+</body>
+</html>
