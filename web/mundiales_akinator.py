@@ -4,6 +4,7 @@ import os
 from typing import Dict, List, Any, Union, Optional
 from dotenv import load_dotenv
 import random
+import re
 
 # Cargar variables de entorno
 load_dotenv()
@@ -21,7 +22,8 @@ class MundialesAkinator:
         self.cache = {
             "paises": None,
             "mundiales": None,
-            "jugadores": None
+            "jugadores": None,
+            "posiciones": None
         }
         
         # Estado del juego
@@ -48,6 +50,18 @@ class MundialesAkinator:
             print(f"Error al obtener datos de la API: {e}")
             return None
     
+    def _post_data(self, endpoint: str, data: Dict) -> Union[Dict, None]:
+        """
+        Realiza una petición POST a la API
+        """
+        try:
+            response = requests.post(f"{self.api_url}/{endpoint}", json=data)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error al enviar datos a la API: {e}")
+            return None
+    
     def cargar_datos(self):
         """
         Carga todos los datos necesarios para el juego
@@ -57,6 +71,9 @@ class MundialesAkinator:
         
         # Cargar mundiales
         self.cache["mundiales"] = self._fetch_data("mundiales") or []
+        
+        # Cargar posiciones
+        self.cache["posiciones"] = self._fetch_data("posiciones") or []
         
         # Cargar jugadores (esto podría ser bajo demanda según necesidad)
         self.cache["jugadores"] = []
@@ -73,7 +90,8 @@ class MundialesAkinator:
                         "nombre": jugador.get("nombre", "Jugador desconocido"),
                         "posicion": jugador.get("posicion", "Desconocida"),
                         "titular": jugador.get("titular", False),
-                        "posicion_abr": jugador.get("posicion_abr", "")
+                        "posicion_abr": jugador.get("posicion_abr", ""),
+                        "posicion_id": jugador.get("posicion_id", None)
                     }
                     self.cache["jugadores"].append(jugador_completo)
         
@@ -300,7 +318,8 @@ class MundialesAkinator:
         
         # Si no hay candidatos o se alcanzó el máximo de intentos
         if not candidatos or self.estado["intentos"] >= self.estado["max_intentos"]:
-            return "No puedo adivinar en qué estabas pensando. ¿Quieres intentar de nuevo?"
+            # En lugar de manejar el fracaso directamente, indicamos que no pudimos adivinar
+            return "No pude adivinar en qué estabas pensando. ¿Quieres intentar de nuevo?"
         
         # Si solo queda un candidato, verificar si hemos adivinado
         if len(candidatos) == 1:
@@ -314,7 +333,8 @@ class MundialesAkinator:
                     anio = candidato.get('anio', "año desconocido")
                     return f"¡Lo adiviné! Estabas pensando en {nombre} de {pais} ({anio}). ¿Quieres jugar de nuevo?"
             else:
-                return "¡Vaya! Me he equivocado. ¿Quieres intentar de nuevo?"
+                # No adivinamos, informar que necesitamos información
+                return "No pude adivinar. ¿Quieres proporcionar los datos correctos?"
         
         # Filtrar candidatos según la respuesta y la última pregunta
         nuevos_candidatos = []
@@ -379,23 +399,25 @@ class MundialesAkinator:
                     posicion_candidato = candidato.get("posicion", "Desconocida")
                     es_portero = "portero" in pregunta.lower() and posicion_candidato == "Portero"
                     es_defensa = "defensa" in pregunta.lower() and posicion_candidato == "Defensa"
-                    es_mediocampista = "mediocampista" in pregunta.lower() and posicion_candidato == "Mediocampista"
-                    es_delantero = "delantero" in pregunta.lower() and posicion_candidato == "Delantero"
+                    es_mediocampista = "mediocampista" in pregunta.lower() and posicion_candidato
                     
-                    if (afirmativo and (es_portero or es_defensa or es_mediocampista or es_delantero)) or \
-                       (not afirmativo and not (es_portero or es_defensa or es_mediocampista or es_delantero)):
-                        mantener = True
-                
                 elif tipo_pregunta == "epoca":
-                    año_pregunta = int(pregunta.split()[-1].rstrip("?"))
-                    if (candidato.get("anio", 0) > año_pregunta and afirmativo) or \
-                       (candidato.get("anio", 0) <= año_pregunta and not afirmativo):
+                    try:
+                        año_pregunta = int(re.search(r'después del año (\d+)', pregunta).group(1))
+                        if (candidato.get("anio", 0) > año_pregunta and afirmativo) or \
+                           (candidato.get("anio", 0) <= año_pregunta and not afirmativo):
+                            mantener = True
+                    except (AttributeError, ValueError):
+                        # Si hay error en el regex o conversión, mantenemos el candidato
                         mantener = True
                 
                 elif tipo_pregunta == "pais":
-                    pais_preguntado = pregunta.split("es de ")[-1].rstrip("?")
-                    if (candidato.get("pais", "") == pais_preguntado and afirmativo) or \
-                       (candidato.get("pais", "") != pais_preguntado and not afirmativo):
+                    try:
+                        pais_preguntado = pregunta.split("es de ")[-1].rstrip("?")
+                        if (candidato.get("pais", "") == pais_preguntado and afirmativo) or \
+                           (candidato.get("pais", "") != pais_preguntado and not afirmativo):
+                            mantener = True
+                    except:
                         mantener = True
                 
                 elif tipo_pregunta == "titular":
@@ -409,9 +431,12 @@ class MundialesAkinator:
                         mantener = True
                 
                 elif tipo_pregunta == "jugador_directo":
-                    nombre_preguntado = pregunta.split("es ")[-1].rstrip("?")
-                    if (candidato.get("nombre", "") == nombre_preguntado and afirmativo) or \
-                       (candidato.get("nombre", "") != nombre_preguntado and not afirmativo):
+                    try:
+                        nombre_preguntado = pregunta.split("es ")[-1].rstrip("?")
+                        if (candidato.get("nombre", "") == nombre_preguntado and afirmativo) or \
+                           (candidato.get("nombre", "") != nombre_preguntado and not afirmativo):
+                            mantener = True
+                    except:
                         mantener = True
                 
                 else:
@@ -432,6 +457,113 @@ class MundialesAkinator:
         
         # Generar siguiente pregunta
         return self.hacer_pregunta()
+    
+    def registrar_nuevo_jugador(self, nombre: str, pais: str, anio: str, posicion_id: int, titular: bool) -> bool:
+        """
+        Registra un nuevo jugador en la base de datos
+        """
+        try:
+            # Buscar o crear mundial
+            mundial_id = None
+            for mundial in self.cache.get("mundiales", []):
+                if mundial["pais"] == pais and str(mundial["anio"]) == str(anio):
+                    mundial_id = mundial["id"]
+                    break
+            
+            if not mundial_id:
+                # Crear nuevo mundial
+                mundial_id = self._registrar_nuevo_mundial(pais, str(anio))
+                if not mundial_id:
+                    return False
+            
+            # Crear nuevo jugador
+            nuevo_jugador = {
+                "nombre": nombre,
+                "mundial_id": mundial_id,
+                "posicion_id": posicion_id,
+                "titular": titular
+            }
+            
+            resultado = self._post_data("jugadores", nuevo_jugador)
+            if resultado:
+                # Actualizar caché
+                posicion_nombre = "Desconocida"
+                for pos in self.cache.get("posiciones", []):
+                    if pos["id"] == posicion_id:
+                        posicion_nombre = pos["nombre"]
+                        break
+                    
+                jugador_completo = {
+                    "id": resultado.get("id"),
+                    "nombre": nombre,
+                    "mundial_id": mundial_id,
+                    "anio": int(anio),
+                    "pais": pais,
+                    "posicion": posicion_nombre,
+                    "posicion_id": posicion_id,
+                    "titular": titular
+                }
+                self.cache["jugadores"].append(jugador_completo)
+                return True
+            
+            return False
+        except Exception as e:
+            print(f"Error al registrar jugador: {e}")
+            return False
+    
+    def _registrar_nuevo_mundial(self, pais: str, año: str) -> Optional[int]:
+        """
+        Registra un nuevo mundial y devuelve su ID
+        """
+        try:
+            # Buscar o crear país
+            pais_id = None
+            for p in self.cache["paises"]:
+                if p["nombre"] == pais:
+                    pais_id = p["id"]
+                    break
+            
+            if not pais_id:
+                # Crear nuevo país
+                nuevo_pais = {"nombre": pais}
+                resultado = self._post_data("paises", nuevo_pais)
+                if resultado:
+                    pais_id = resultado.get("id")
+                    print(f"País {pais} registrado correctamente.")
+                    # Actualizar caché
+                    self.cache["paises"].append(resultado)
+                else:
+                    print("Error al registrar el país.")
+                    return None
+            
+            # Crear nuevo mundial
+            nuevo_mundial = {
+                "anio": int(año),
+                "pais_id": pais_id
+            }
+            
+            resultado = self._post_data("mundiales", nuevo_mundial)
+            if resultado:
+                # Actualizar caché
+                resultado["pais"] = pais  # Añadir el nombre del país para facilitar el uso
+                self.cache["mundiales"].append(resultado)
+                return resultado.get("id")
+            else:
+                return None
+        except Exception as e:
+            print(f"Error al registrar mundial: {e}")
+            return None
+    
+    def registrar_nuevo_equipo(self, pais: str, anio: str) -> bool:
+        """
+        Registra un nuevo equipo campeón en la base de datos
+        """
+        try:
+            mundial_id = self._registrar_nuevo_mundial(pais, anio)
+            return mundial_id is not None
+        except Exception as e:
+            print(f"Error al registrar equipo: {e}")
+            return False
     
     def jugar(self):
         """
@@ -472,3 +604,4 @@ class MundialesAkinator:
 if __name__ == "__main__":
     akinator = MundialesAkinator()
     akinator.jugar()
+                    
