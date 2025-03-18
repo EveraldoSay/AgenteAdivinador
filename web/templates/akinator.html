@@ -164,6 +164,64 @@
             </div>
         </div>
 
+        <!-- Formularios de registro -->
+        <div id="registro-container" class="d-none">
+            <!-- Formulario para registrar equipo -->
+            <div id="registro-equipo" class="question-box d-none">
+                <h3>Registra el equipo en el que estabas pensando</h3>
+                <form id="form-equipo">
+                    <div class="mb-3">
+                        <label for="pais-equipo" class="form-label">País</label>
+                        <input type="text" class="form-control" id="pais-equipo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="anio-equipo" class="form-label">Año del Mundial</label>
+                        <input type="number" class="form-control" id="anio-equipo" min="1930" max="2022" required>
+                    </div>
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">Guardar Equipo</button>
+                        <button type="button" class="btn btn-secondary" id="cancelar-equipo">Cancelar</button>
+                    </div>
+                </form>
+                <div id="alert-equipo" class="alert d-none" role="alert"></div>
+            </div>
+
+            <!-- Formulario para registrar jugador -->
+            <div id="registro-jugador" class="question-box d-none">
+                <h3>Registra el jugador en el que estabas pensando</h3>
+                <form id="form-jugador">
+                    <div class="mb-3">
+                        <label for="nombre-jugador" class="form-label">Nombre del jugador</label>
+                        <input type="text" class="form-control" id="nombre-jugador" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pais-jugador" class="form-label">País</label>
+                        <input type="text" class="form-control" id="pais-jugador" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="anio-jugador" class="form-label">Año del Mundial</label>
+                        <input type="number" class="form-control" id="anio-jugador" min="1930" max="2022" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="posicion-jugador" class="form-label">Posición</label>
+                        <select class="form-select" id="posicion-jugador" required>
+                            <option value="" disabled selected>Selecciona una posición</option>
+                            <!-- Las opciones se cargarán con JavaScript -->
+                        </select>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="titular-jugador">
+                        <label class="form-check-label" for="titular-jugador">¿Era titular?</label>
+                    </div>
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">Guardar Jugador</button>
+                        <button type="button" class="btn btn-secondary" id="cancelar-jugador">Cancelar</button>
+                    </div>
+                </form>
+                <div id="alert-jugador" class="alert d-none" role="alert"></div>
+            </div>
+        </div>
+
         <a href="/" class="btn btn-light back-to-chat">Volver al Chat adivinador</a>
     </div>
 
@@ -184,8 +242,24 @@
             const respNose = document.getElementById('resp-nose');
             const playAgain = document.getElementById('play-again');
 
+            // Elementos de registro
+            const registroContainer = document.getElementById('registro-container');
+            const registroEquipo = document.getElementById('registro-equipo');
+            const registroJugador = document.getElementById('registro-jugador');
+            const formEquipo = document.getElementById('form-equipo');
+            const formJugador = document.getElementById('form-jugador');
+            const posicionSelect = document.getElementById('posicion-jugador');
+            const cancelarEquipo = document.getElementById('cancelar-equipo');
+            const cancelarJugador = document.getElementById('cancelar-jugador');
+            const alertEquipo = document.getElementById('alert-equipo');
+            const alertJugador = document.getElementById('alert-jugador');
+
+            // Modo actual del juego
+            let currentMode = 'equipo';
+
             // Iniciar juego según el modo
             function startGame(mode) {
+                currentMode = mode;
                 fetch('/api/iniciar', {
                     method: 'POST',
                     headers: {
@@ -195,9 +269,18 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Ocultar selección de modo
                     modeSelection.classList.add('d-none');
+                    
+                    // Mostrar primera pregunta
                     questionText.textContent = data.pregunta;
                     questionContainer.classList.remove('d-none');
+
+                    // Ocultar otros contenedores
+                    resultContainer.classList.add('d-none');
+                    registroContainer.classList.add('d-none');
+                    registroEquipo.classList.add('d-none');
+                    registroJugador.classList.add('d-none');
                 })
                 .catch(error => console.error('Error:', error));
             }
@@ -213,18 +296,162 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.es_final) {
+                    if (data.necesita_registro) {
+                        // Mostrar formulario de registro
                         questionContainer.classList.add('d-none');
+                        resultContainer.classList.add('d-none');
+                        registroContainer.classList.remove('d-none');
+                        
+                        if (data.modo === 'equipo') {
+                            registroEquipo.classList.remove('d-none');
+                            registroJugador.classList.add('d-none');
+                            
+                            // Limpiar formulario
+                            document.getElementById('pais-equipo').value = '';
+                            document.getElementById('anio-equipo').value = '';
+                            alertEquipo.classList.add('d-none');
+                        } else {
+                            registroJugador.classList.remove('d-none');
+                            registroEquipo.classList.add('d-none');
+                            
+                            // Limpiar formulario
+                            document.getElementById('nombre-jugador').value = '';
+                            document.getElementById('pais-jugador').value = '';
+                            document.getElementById('anio-jugador').value = '';
+                            document.getElementById('titular-jugador').checked = false;
+                            alertJugador.classList.add('d-none');
+                            
+                            // Cargar posiciones
+                            cargarPosiciones();
+                        }
+                    } else if (data.es_final) {
+                        // Mostrar resultado final
+                        questionContainer.classList.add('d-none');
+                        registroContainer.classList.add('d-none');
                         resultText.textContent = data.resultado;
                         resultContainer.classList.remove('d-none');
                     } else {
+                        // Mostrar siguiente pregunta
                         questionText.textContent = data.resultado;
                     }
                 })
                 .catch(error => console.error('Error:', error));
             }
 
-            // Event listeners
+            // Cargar posiciones para el formulario de jugador
+            function cargarPosiciones() {
+                fetch('/api/posiciones')
+                .then(response => response.json())
+                .then(posiciones => {
+                    // Limpiar opciones existentes
+                    posicionSelect.innerHTML = '<option value="" disabled selected>Selecciona una posición</option>';
+                    
+                    // Añadir opciones de posición
+                    posiciones.forEach(pos => {
+                        const option = document.createElement('option');
+                        option.value = pos.id;
+                        option.textContent = pos.nombre;
+                        posicionSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error al cargar posiciones:', error));
+            }
+
+            // Enviar datos de equipo
+            formEquipo.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const pais = document.getElementById('pais-equipo').value;
+                const anio = document.getElementById('anio-equipo').value;
+                
+                fetch('/api/registrar/equipo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ pais, anio })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Mostrar mensaje de éxito
+                        alertEquipo.textContent = result.message;
+                        alertEquipo.classList.remove('d-none', 'alert-danger');
+                        alertEquipo.classList.add('alert-success');
+                        
+                        // Después de 2 segundos, reiniciar juego
+                        setTimeout(() => {
+                            startGame('equipo');
+                        }, 2000);
+                    } else {
+                        // Mostrar error
+                        alertEquipo.textContent = 'Error: ' + (result.error || 'No se pudo registrar el equipo');
+                        alertEquipo.classList.remove('d-none', 'alert-success');
+                        alertEquipo.classList.add('alert-danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alertEquipo.textContent = 'Error de conexión';
+                    alertEquipo.classList.remove('d-none', 'alert-success');
+                    alertEquipo.classList.add('alert-danger');
+                });
+            });
+
+            // Enviar datos de jugador
+            formJugador.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const nombre = document.getElementById('nombre-jugador').value;
+                const pais = document.getElementById('pais-jugador').value;
+                const anio = document.getElementById('anio-jugador').value;
+                const posicion_id = parseInt(document.getElementById('posicion-jugador').value);
+                const titular = document.getElementById('titular-jugador').checked;
+                
+                fetch('/api/registrar/jugador', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ nombre, pais, anio, posicion_id, titular })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Mostrar mensaje de éxito
+                        alertJugador.textContent = result.message;
+                        alertJugador.classList.remove('d-none', 'alert-danger');
+                        alertJugador.classList.add('alert-success');
+                        
+                        // Después de 2 segundos, reiniciar juego
+                        setTimeout(() => {
+                            startGame('jugador');
+                        }, 2000);
+                    } else {
+                        // Mostrar error
+                        alertJugador.textContent = 'Error: ' + (result.error || 'No se pudo registrar el jugador');
+                        alertJugador.classList.remove('d-none', 'alert-success');
+                        alertJugador.classList.add('alert-danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alertJugador.textContent = 'Error de conexión';
+                    alertJugador.classList.remove('d-none', 'alert-success');
+                    alertJugador.classList.add('alert-danger');
+                });
+            });
+
+            // Botones de cancelar
+            cancelarEquipo.addEventListener('click', () => {
+                startGame('equipo');
+            });
+            
+            cancelarJugador.addEventListener('click', () => {
+                startGame('jugador');
+            });
+
+            // Event listeners principales
             modeEquipo.addEventListener('click', () => startGame('equipo'));
             modeJugador.addEventListener('click', () => startGame('jugador'));
             
@@ -233,6 +460,7 @@
             respNose.addEventListener('click', () => processResponse('no sé'));
             
             playAgain.addEventListener('click', () => {
+                // Reiniciar juego
                 resultContainer.classList.add('d-none');
                 modeSelection.classList.remove('d-none');
             });
