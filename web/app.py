@@ -4,6 +4,7 @@ from mundiales_agent import MundialesAgent
 from mundiales_agent_bert import MundialesAgentBERT
 import os
 from dotenv import load_dotenv
+import logging
 
 # Cargar variables de entorno
 load_dotenv()
@@ -11,6 +12,7 @@ load_dotenv()
 # Inicializar la aplicación Flask
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "192b9bdd22ab9ed4d12e236c78afcb9a393ec15f71bbf5dc987d54727823bcbf")
+app.logger.setLevel(logging.DEBUG)
 
 # Inicializar agentes
 akinator = MundialesAkinator(api_url=os.getenv("API_BASE_URL", "http://localhost:3000/api"))
@@ -29,42 +31,174 @@ def akinator_index():
 
 @app.route('/api/iniciar', methods=['POST'])
 def iniciar_juego():
-    datos = request.json
-    modo = datos.get('modo', 'equipo')
-    
-    # Iniciar el juego de Akinator
-    mensaje = akinator.iniciar_juego(modo)
-    
-    # Guardar estado en sesión
-    session['akinator_estado'] = akinator.estado
-    
-    # Generar primera pregunta
-    pregunta = akinator.hacer_pregunta()
-    
-    return jsonify({
-        'mensaje': mensaje,
-        'pregunta': pregunta
-    })
+    try:
+        datos = request.json
+        modo = datos.get('modo', 'equipo')
+        
+        # Iniciar juego
+        mensaje = akinator.iniciar_juego(modo)
+        
+        # Guardar estado en sesión de forma segura
+        session['akinator_estado'] = serializable_estado(akinator.estado)
+        
+        # Generar primera pregunta
+        pregunta = akinator.hacer_pregunta()
+        
+        return jsonify({
+            'mensaje': mensaje,
+            'pregunta': pregunta,
+            'modo': modo
+        })
+    except Exception as e:
+        app.logger.error(f"Error en iniciar_juego: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/responder', methods=['POST'])
 def procesar_respuesta():
-    datos = request.json
-    respuesta = datos.get('respuesta', '')
+    try:
+        datos = request.json
+        respuesta = datos.get('respuesta', '')
+        
+        # Recuperar estado de la sesión
+        if 'akinator_estado' in session:
+            try:
+                akinator.estado = session['akinator_estado']
+            except Exception as e:
+                app.logger.error(f"Error al recuperar estado: {e}")
+                # Iniciar nuevo juego si hay problema con el estado
+                modo = session.get('akinator_estado', {}).get('modo', 'equipo')
+                akinator.iniciar_juego(modo)
+        
+        # Procesar respuesta
+        resultado = akinator.procesar_respuesta(respuesta)
+        
+        # Guardar estado actualizado
+        session['akinator_estado'] = serializable_estado(akinator.estado)
+        
+        # Determinar si es un resultado final o si necesita registro
+        es_final = "¿Quieres jugar de nuevo?" in resultado or "¿Quieres intentar de nuevo?" in resultado
+        necesita_registro = "No pude adivinar" in resultado or "No tengo más candidatos" in resultado
+        
+        return jsonify({
+            'resultado': resultado,
+            'es_final': es_final,
+            'necesita_registro': necesita_registro,
+            'modo': akinator.estado.get('modo', 'equipo')
+        })
+    except Exception as e:
+        app.logger.error(f"Error en procesar_respuesta: {e}")
+        return jsonify({
+            'resultado': f"Ocurrió un error: {str(e)}",
+            'es_final': True,
+            'error': True
+        }), 500
+
+def serializable_estado(estado):
+    """Convierte el estado en un objeto serializable para la sesión"""
+    # Crea una copia limpia del estado
+    estado_limpio = {}
     
-    # Recuperar estado de la sesión
-    if 'akinator_estado' in session:
-        akinator.estado = session['akinator_estado']
+    # Copia solo los elementos serializables
+    for clave, valor in estado.items():
+        if clave == "candidatos":
+            # Para candidatos, solo mantener las propiedades básicas
+            candidatos_limpios = []
+            for candidato in valor:
+                candidato_limpio = {
+                    k: v for k, v in candidato.items() 
+                    if isinstance(v, (str, int, float, bool, type(None)))
+                }
+                candidatos_limpios.append(candidato_limpio)
+            estado_limpio[clave] = candidatos_limpios
+        elif isinstance(valor, (str, int, float, bool, list, dict, type(None))):
+            estado_limpio[clave] = valor
     
-    # Procesar la respuesta de Akinator
-    resultado = akinator.procesar_respuesta(respuesta)
-    
-    # Guardar estado actualizado en la sesión
-    session['akinator_estado'] = akinator.estado
-    
-    return jsonify({
-        'resultado': resultado,
-        'es_final': "¿Quieres jugar de nuevo?" in resultado or "¿Quieres intentar de nuevo?" in resultado
-    })
+    return estado_limpio
+
+@app.route('/api/posiciones', methods=['GET'])
+def obtener_posiciones():
+    """Obtiene la lista de posiciones disponibles"""
+    try:
+        # Asegurarse de que los datos estén cargados
+        if not akinator.cache.get("posiciones"):
+            akinator.cargar_datos()
+        
+        return jsonify(akinator.cache.get("posiciones", []))
+    except Exception as e:
+        app.logger.error(f"Error en obtener_posiciones: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/registrar/equipo', methods=['POST'])
+def registrar_equipo():
+    """Registra un nuevo equipo campeón"""
+    try:
+        datos = request.json
+        
+        pais = datos.get('pais', '')
+        anio = datos.get('anio', '')
+        
+        if not pais or not anio:
+            return jsonify({'success': False, 'error': 'Faltan datos obligatorios'}), 400
+        
+        # Verificar si ya existe
+        existe = False
+        for mundial in akinator.cache.get("mundiales", []):
+            if mundial["pais"] == pais and str(mundial["anio"]) == str(anio):
+                existe = True
+                break
+        
+        if existe:
+            return jsonify({'success': True, 'message': f'El mundial de {pais} en {anio} ya estaba registrado'})
+        
+        # Registrar nuevo mundial
+        resultado = akinator.registrar_nuevo_equipo(pais, str(anio))
+        
+        if resultado:
+            return jsonify({
+                'success': True, 
+                'message': f'Se ha registrado el mundial de {pais} en {anio}'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Error al registrar el mundial'}), 500
+    except Exception as e:
+        app.logger.error(f"Error en registrar_equipo: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/registrar/jugador', methods=['POST'])
+def registrar_jugador():
+    """Registra un nuevo jugador"""
+    try:
+        datos = request.json
+        
+        nombre = datos.get('nombre', '')
+        pais = datos.get('pais', '')
+        anio = datos.get('anio', '')
+        posicion_id = datos.get('posicion_id')
+        titular = datos.get('titular', False)
+        
+        if not nombre or not pais or not anio or posicion_id is None:
+            return jsonify({'success': False, 'error': 'Faltan datos obligatorios'}), 400
+        
+        # Registrar jugador usando el método del akinator
+        resultado = akinator.registrar_nuevo_jugador(nombre, pais, str(anio), posicion_id, titular)
+        
+        if resultado:
+            # Obtener nombre de la posición
+            posicion_nombre = "Desconocida"
+            for pos in akinator.cache.get("posiciones", []):
+                if pos["id"] == posicion_id:
+                    posicion_nombre = pos["nombre"]
+                    break
+            
+            return jsonify({
+                'success': True,
+                'message': f'Se ha registrado a {nombre}, {posicion_nombre} de {pais} en {anio}'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Error al registrar el jugador'}), 500
+    except Exception as e:
+        app.logger.error(f"Error en registrar_jugador: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Rutas para el Agente de Consultas (BERT)
 @app.route('/entrenar')
