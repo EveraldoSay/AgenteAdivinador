@@ -1,3 +1,4 @@
+// mundiales-api/app.js
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -12,9 +13,9 @@ app.use(express.json());
 
 // Configuración de la conexión a la base de datos
 const dbConfig = {
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: process.env.DB_PORT || '3308',
+  host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
+  port: process.env.DB_PORT || '3308',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'agenteadivinador'
 };
@@ -62,12 +63,12 @@ app.get('/api/paises/:id/mundiales', async (req, res) => {
 // Obtener mundiales con información del país
 app.get('/api/mundiales', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT m.id, m.anio, p.id as pais_id, p.nombre as pais
-       FROM mundiales m
-       JOIN paises p ON m.pais_id = p.id
-       ORDER BY m.anio DESC`
-    );
+    const [rows] = await pool.query(`
+      SELECT m.id, m.anio, p.id as pais_id, p.nombre as pais
+      FROM mundiales m
+      JOIN paises p ON m.pais_id = p.id
+      ORDER BY m.anio DESC
+    `);
     res.json(rows);
   } catch (error) {
     console.error('Error al obtener mundiales:', error);
@@ -78,12 +79,13 @@ app.get('/api/mundiales', async (req, res) => {
 // Obtener detalles de un mundial específico
 app.get('/api/mundiales/:id', async (req, res) => {
   try {
-    const [mundialRows] = await pool.query(
-      `SELECT m.id, m.anio, p.id as pais_id, p.nombre as pais
-       FROM mundiales m
-       JOIN paises p ON m.pais_id = p.id
-       WHERE m.id = ?`, [req.params.id]
-    );
+    // Obtenemos la información del mundial
+    const [mundialRows] = await pool.query(`
+      SELECT m.id, m.anio, p.id as pais_id, p.nombre as pais
+      FROM mundiales m
+      JOIN paises p ON m.pais_id = p.id
+      WHERE m.id = ?
+    `, [req.params.id]);
 
     if (mundialRows.length === 0) {
       return res.status(404).json({ error: 'Mundial no encontrado' });
@@ -91,22 +93,24 @@ app.get('/api/mundiales/:id', async (req, res) => {
 
     const mundial = mundialRows[0];
 
-    const [jugadoresRows] = await pool.query(
-      `SELECT j.id, j.nombre, p.nombre as posicion, p.abreviatura as posicion_abr, j.titular
-       FROM jugadores j
-       JOIN posiciones p ON j.posicion_id = p.id
-       WHERE j.mundial_id = ?
-       ORDER BY 
-         CASE 
-           WHEN p.nombre = 'Portero' THEN 1
-           WHEN p.nombre = 'Defensa' THEN 2
-           WHEN p.nombre = 'Mediocampista' THEN 3
-           WHEN p.nombre = 'Delantero' THEN 4
-         END,
-         j.titular DESC,
-         j.nombre`, [req.params.id]
-    );
+    // Obtenemos los jugadores de ese mundial
+    const [jugadoresRows] = await pool.query(`
+      SELECT j.id, j.nombre, p.nombre as posicion, p.id as posicion_id, p.abreviatura as posicion_abr, j.titular
+      FROM jugadores j
+      JOIN posiciones p ON j.posicion_id = p.id
+      WHERE j.mundial_id = ?
+      ORDER BY 
+        CASE 
+          WHEN p.nombre = 'Portero' THEN 1
+          WHEN p.nombre = 'Defensa' THEN 2
+          WHEN p.nombre = 'Mediocampista' THEN 3
+          WHEN p.nombre = 'Delantero' THEN 4
+        END,
+        j.titular DESC,
+        j.nombre
+    `, [req.params.id]);
 
+    // Armamos la respuesta completa
     mundial.jugadores = {
       titulares: jugadoresRows.filter(j => j.titular),
       suplentes: jugadoresRows.filter(j => !j.titular)
@@ -127,20 +131,167 @@ app.get('/api/jugadores/buscar', async (req, res) => {
       return res.status(400).json({ error: 'La búsqueda debe tener al menos 3 caracteres' });
     }
 
-    const [rows] = await pool.query(
-      `SELECT j.id, j.nombre, pos.nombre as posicion, p.nombre as pais, m.anio,
-              j.titular
-       FROM jugadores j
-       JOIN mundiales m ON j.mundial_id = m.id
-       JOIN paises p ON m.pais_id = p.id
-       JOIN posiciones pos ON j.posicion_id = pos.id
-       WHERE j.nombre LIKE ?
-       ORDER BY m.anio DESC, j.nombre`, [`%${busqueda}%`]
-    );
+    const [rows] = await pool.query(`
+      SELECT j.id, j.nombre, pos.nombre as posicion, p.nombre as pais, m.anio,
+             j.titular
+      FROM jugadores j
+      JOIN mundiales m ON j.mundial_id = m.id
+      JOIN paises p ON m.pais_id = p.id
+      JOIN posiciones pos ON j.posicion_id = pos.id
+      WHERE j.nombre LIKE ?
+      ORDER BY m.anio DESC, j.nombre
+    `, [`%${busqueda}%`]);
 
     res.json(rows);
   } catch (error) {
     console.error('Error al buscar jugadores:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener todas las posiciones
+app.get('/api/posiciones', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM posiciones ORDER BY id');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener posiciones:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear un nuevo país
+app.post('/api/paises', async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    
+    if (!nombre) {
+      return res.status(400).json({ error: 'El nombre del país es obligatorio' });
+    }
+    
+    // Verificar si ya existe
+    const [existingRows] = await pool.query('SELECT id FROM paises WHERE nombre = ?', [nombre]);
+    if (existingRows.length > 0) {
+      return res.json(existingRows[0]); // Devolver el existente
+    }
+    
+    // Insertar nuevo país
+    const [result] = await pool.query('INSERT INTO paises (nombre) VALUES (?)', [nombre]);
+    
+    res.json({
+      id: result.insertId,
+      nombre
+    });
+  } catch (error) {
+    console.error('Error al crear país:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear un nuevo mundial
+app.post('/api/mundiales', async (req, res) => {
+  try {
+    const { anio, pais_id } = req.body;
+    
+    if (!anio || !pais_id) {
+      return res.status(400).json({ error: 'El año y el país son obligatorios' });
+    }
+    
+    // Verificar si ya existe
+    const [existingRows] = await pool.query(
+      'SELECT id FROM mundiales WHERE anio = ? AND pais_id = ?', 
+      [anio, pais_id]
+    );
+    
+    if (existingRows.length > 0) {
+      // Si ya existe, obtener detalles
+      const [mundialRows] = await pool.query(`
+        SELECT m.id, m.anio, p.id as pais_id, p.nombre as pais
+        FROM mundiales m
+        JOIN paises p ON m.pais_id = p.id
+        WHERE m.id = ?
+      `, [existingRows[0].id]);
+      
+      return res.json(mundialRows[0]); // Devolver el existente
+    }
+    
+    // Insertar nuevo mundial
+    const [result] = await pool.query(
+      'INSERT INTO mundiales (anio, pais_id) VALUES (?, ?)',
+      [anio, pais_id]
+    );
+    
+    // Obtener detalles del país
+    const [paisRows] = await pool.query('SELECT nombre FROM paises WHERE id = ?', [pais_id]);
+    
+    res.json({
+      id: result.insertId,
+      anio,
+      pais_id,
+      pais: paisRows[0]?.nombre || 'Desconocido'
+    });
+  } catch (error) {
+    console.error('Error al crear mundial:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear un nuevo jugador
+app.post('/api/jugadores', async (req, res) => {
+  try {
+    const { nombre, mundial_id, posicion_id, titular } = req.body;
+    
+    if (!nombre || !mundial_id || !posicion_id) {
+      return res.status(400).json({ error: 'El nombre, mundial y posición son obligatorios' });
+    }
+    
+    // Verificar si ya existe
+    const [existingRows] = await pool.query(
+      'SELECT id FROM jugadores WHERE nombre = ? AND mundial_id = ?', 
+      [nombre, mundial_id]
+    );
+    
+    if (existingRows.length > 0) {
+      // Si ya existe, obtener detalles
+      const [jugadorRows] = await pool.query(`
+        SELECT j.id, j.nombre, pos.nombre as posicion, pos.id as posicion_id, 
+               p.nombre as pais, m.anio, j.titular, m.id as mundial_id
+        FROM jugadores j
+        JOIN mundiales m ON j.mundial_id = m.id
+        JOIN paises p ON m.pais_id = p.id
+        JOIN posiciones pos ON j.posicion_id = pos.id
+        WHERE j.id = ?
+      `, [existingRows[0].id]);
+      
+      return res.json(jugadorRows[0]); // Devolver el existente
+    }
+    
+    // Insertar nuevo jugador
+    const [result] = await pool.query(
+      'INSERT INTO jugadores (nombre, mundial_id, posicion_id, titular) VALUES (?, ?, ?, ?)',
+      [nombre, mundial_id, posicion_id, titular ? 1 : 0]
+    );
+    
+    // Obtener detalles del jugador recién creado
+    const [jugadorRows] = await pool.query(`
+      SELECT j.id, j.nombre, pos.nombre as posicion, pos.id as posicion_id, 
+             p.nombre as pais, m.anio, j.titular, m.id as mundial_id
+      FROM jugadores j
+      JOIN mundiales m ON j.mundial_id = m.id
+      JOIN paises p ON m.pais_id = p.id
+      JOIN posiciones pos ON j.posicion_id = pos.id
+      WHERE j.id = ?
+    `, [result.insertId]);
+    
+    res.json(jugadorRows[0] || {
+      id: result.insertId,
+      nombre,
+      mundial_id,
+      posicion_id,
+      titular: !!titular
+    });
+  } catch (error) {
+    console.error('Error al crear jugador:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
