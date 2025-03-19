@@ -179,6 +179,16 @@ def registrar_jugador():
         if not nombre or not pais or not anio or posicion_id is None:
             return jsonify({'success': False, 'error': 'Faltan datos obligatorios'}), 400
         
+        # Verificar si ya existe
+        existe = False
+        for jugador in akinator.cache.get("jugadores", []):
+            if jugador["nombre"] == nombre and jugador["pais"] == pais and str(jugador["anio"]) == str(anio):
+                existe = True
+                break
+        
+        if existe:
+            return jsonify({'success': True, 'message': f'El jugador {nombre} de {pais} en {anio} ya estaba registrado'})
+        
         # Registrar jugador usando el método del akinator
         resultado = akinator.registrar_nuevo_jugador(nombre, pais, str(anio), posicion_id, titular)
         
